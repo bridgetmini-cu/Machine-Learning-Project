@@ -1,0 +1,312 @@
+---
+title: "Migraine Case Study"
+author: "Bridget Litostansky"
+date: "2024-02-06"
+output: html_document
+---
+
+## Migraine Data - ClinicalTrials.gov API
+
+Data is being pulled from [ClinicalTrials.gov API](https://clinicaltrials.gov/data-api/api). This project will be pulling GET/studies to pull any clinical study with migraine being associated to it. Files can be returned as CSV or JSON
+
+```{r}
+# Setting the API url with appropriate format and query term
+api_url <- "https://clinicaltrials.gov/api/v2/studies?format=json&query.term=Migraine&pageSize=500"
+```
+
+```{r}
+# Calling the API
+api_call <- httr::GET(api_url)
+api_call  
+```
+
+```{r}
+# Reading results as json content
+api_char <- base::rawToChar(api_call$content)
+```
+
+```{r}
+# Converting API results to data frame
+api_JSON <- jsonlite::fromJSON(api_char, flatten=TRUE)
+api_JSON
+
+migraine_df <- api_JSON$studies[ -c(5, 7,20:40, 44, 45, 55:56, 58:61, 70, 73:80, 86, 89:118, 121:146)]
+
+
+```
+
+```{r}
+migraine_df
+```
+
+```{r}
+names(migraine_df)[1] <- "has_results"
+names(migraine_df)[2] <- "nct_id"
+names(migraine_df)[3] <- "brief_title"
+names(migraine_df)[4] <- "official_title"
+names(migraine_df)[5] <- "acronym"
+names(migraine_df)[6] <- "org_study_id"
+names(migraine_df)[7] <- "org_full_name"
+names(migraine_df)[8] <- "org_class"
+names(migraine_df)[9] <- "verified_date"
+names(migraine_df)[10] <- "overall_status"
+names(migraine_df)[11] <- "first_submit"
+names(migraine_df)[12] <- "first_submit_qc"
+names(migraine_df)[13] <- "last_update"
+names(migraine_df)[14] <- "why_stopped"
+names(migraine_df)[15] <- "result_first_submit"
+names(migraine_df)[16] <- "result_first_submit_qc"
+names(migraine_df)[17] <- "last_known_status"
+names(migraine_df)[18] <- "investigator_full_name"
+names(migraine_df)[19] <- "investigator_title"
+names(migraine_df)[20] <- "investigator_affiliation"
+names(migraine_df)[21] <- "lead_sponsor_name"
+names(migraine_df)[22] <- "lead_sponsor_class"
+names(migraine_df)[23] <- "oversight_has_dmc"
+names(migraine_df)[24] <- "is_fda_regulated_drug"
+names(migraine_df)[25] <- "is_fda_regulated_device"
+names(migraine_df)[26] <- "is_US_export"
+names(migraine_df)[27] <- "is_unapproved_device"
+names(migraine_df)[28] <- "description_brief_summary"
+names(migraine_df)[29] <- "detailed_description"
+names(migraine_df)[30] <- "study_type"
+names(migraine_df)[31] <- "allocation"
+names(migraine_df)[32] <- "intervention_model"
+names(migraine_df)[33] <- "primary_purpose"
+names(migraine_df)[34] <- "intervention_model_description"
+names(migraine_df)[35] <- "observational_model"
+names(migraine_df)[36] <- "time_perspective"
+names(migraine_df)[37] <- "masking_info"
+names(migraine_df)[38] <- "masking_descriptions"
+names(migraine_df)[39] <- "enrollment_count"
+names(migraine_df)[40] <- "enrollment_info"
+names(migraine_df)[41] <- "eligibility criteria"
+names(migraine_df)[42] <- "healthy_volunteers"
+names(migraine_df)[43] <- "sex"
+names(migraine_df)[44] <- "minimum_age"
+names(migraine_df)[45] <- "maximum_age"
+names(migraine_df)[46] <- "study_population"
+names(migraine_df)[47] <- "sampling_method"
+names(migraine_df)[48] <- "pre_assignment_details"
+names(migraine_df)[49] <- "recruitment_details"
+migraine_df
+```
+
+```{r}
+write.csv(df, "\\cleaned_clinical_trials.csv", row.names=TRUE)
+```
+
+## Data Cleaning
+
+```{r}
+# Checking where columns are null
+#is.na(api_JSON$studies)
+```
+
+## Visualizations
+
+```{r}
+# Loading in necessary libraries
+library(tidyverse)
+library(ggplot2)
+library(webr)
+library("readxl")
+library(dplyr)
+
+```
+
+```{r}
+status_df <- migraine_df %>% group_by(overall_status) %>% mutate(trial_count = n())
+ggplot(data = status_df, aes(x=reorder(overall_status, -trial_count))) + geom_bar(fill="pink") + labs(x="", y="", title="Figure 1: Status of 500 Migraine Clinical Trials") + theme_bw() + theme(axis.text.x = element_text(angle=45, hjust=1)) 
+
+```
+
+```{r}
+min_age_df <- migraine_df %>%
+  group_by(overall_status) %>%
+  count(minimum_age) %>%
+  ggplot(aes(x = overall_status, y = n, fill = minimum_age)) + geom_col() + theme_bw() + theme(axis.text.x = element_text(angle=90, hjust=1)) + labs(x="", y="", title="Figure 2a: Minimum Age Required", fill ="Minimum Age")
+
+min_age_df
+```
+
+```{r}
+max_age_df <- migraine_df %>%
+  group_by(overall_status) %>%
+  count(maximum_age) %>%
+  ggplot(aes(x = overall_status, y = n, fill = maximum_age)) + geom_col() + theme_bw() + theme(axis.text.x = element_text(angle=90, hjust=1)) + labs(x="", y="", title="Figure 2b: Maximum Age Required", fill ="Maximum Age")
+
+max_age_df
+```
+
+```{r}
+migraine_kaggle <- data.frame(read_csv("migraine_kaggle.csv"))
+migraine_kaggle
+
+sum(is.na(migraine_kaggle))
+```
+
+```{r}
+pie_chart <- migraine_kaggle %>% group_by(Duration, Frequency) %>% summarise(n = n(), .groups = "keep")
+PieDonut(pie_chart, aes(pies=Duration, donuts=Frequency, count=n), start=pi/2, addPieLabel = FALSE, pieLabelSize = 3, donutLabelSize = 2, showPieName = FALSE, title="Figure 3: Duration of Migraine and Frequency", ratioByGroup = TRUE, use.labels = TRUE, theme_minimal())
+```
+
+```{r}
+
+migraine_kaggle$Duration <- as.integer(migraine_kaggle$Duration)
+migraine_kaggle$Intensity <- as.integer(migraine_kaggle$Intensity)
+migraine_kaggle$Nausea <- as.integer(migraine_kaggle$Nausea)
+migraine_kaggle$Vomit <- as.integer(migraine_kaggle$Vomit)
+migraine_kaggle$Frequency <- as.integer(migraine_kaggle$Frequency)
+migraine_kaggle$Location <- as.integer(migraine_kaggle$Location)
+migraine_kaggle$Character <- as.integer(migraine_kaggle$Character)
+migraine_kaggle$Phonophobia <- as.integer(migraine_kaggle$Phonophobia)
+migraine_kaggle$Photophobia <- as.integer(migraine_kaggle$Photophobia)
+migraine_kaggle$Visual <- as.integer(migraine_kaggle$Visual)
+migraine_kaggle$Sensory <- as.integer(migraine_kaggle$Sensory)
+migraine_kaggle$Dysphasia <- as.integer(migraine_kaggle$Dysphasia)
+migraine_kaggle$Dysarthria <- as.integer(migraine_kaggle$Dysarthria)
+migraine_kaggle$Vertigo <- as.integer(migraine_kaggle$Vertigo)
+migraine_kaggle$Tinnitus <- as.integer(migraine_kaggle$Tinnitus)
+migraine_kaggle$Hypoacusis <- as.integer(migraine_kaggle$Hypoacusis)
+migraine_kaggle$Diplopia <- as.integer(migraine_kaggle$Diplopia)
+migraine_kaggle$Defect <- as.integer(migraine_kaggle$Defect)
+migraine_kaggle$Ataxia <- as.integer(migraine_kaggle$Ataxia)
+migraine_kaggle$Conscience <- as.integer(migraine_kaggle$Conscience)
+migraine_kaggle$Paresthesia <- as.integer(migraine_kaggle$Paresthesia)
+migraine_kaggle$DPF <- as.integer(migraine_kaggle$DPF)
+
+migraine_kaggle
+
+
+
+```
+
+```{r}
+age_stats <- migraine_kaggle |> summarize(mean_age = mean(Intensity), max_age= max(Age), min_age=min(Age))
+age_stats
+ggplot(migraine_kaggle, aes(x=Age, y = after_stat(density))) + geom_histogram(fill="pink", bins = 30) + geom_vline(aes(xintercept=mean_age), age_stats, color="black") + geom_density(color = "red", linewidth = 1)+ labs(x="Age", y="Frequency", title="Figure 4: Age Range") + theme_bw()
+```
+
+```         
+```
+
+```{r}
+summary(migraine_kaggle$Intensity)
+boxplot(migraine_kaggle$Intensity,
+main = "Figure 5: Frequency of Intensity Scores",
+xlab = "Intensity Score",
+ylab = "Frequency",
+col = "pink",
+border = "black",
+horizontal = TRUE,
+notch = FALSE
+) + theme_bw()
+```
+
+```{r}
+library("readxl")
+
+harvard_data <- read_excel("harvard_migraines.xlsx")
+harvard_data
+```
+
+```{r}
+names(harvard_data)[1] <- "code"
+names(harvard_data)[2] <- "ichd_diagnosis"
+names(harvard_data)[3] <- "questionnaire"
+names(harvard_data)[4] <- "age_at_presentation"
+names(harvard_data)[5] <- "any_headache"
+names(harvard_data)[6] <- "age_at_chronic"
+names(harvard_data)[7] <- "duration_chronic"
+names(harvard_data)[8] <- "chronic_onset"
+names(harvard_data)[9] <- "BMI"
+names(harvard_data)[10] <- "LP_OP_cmH20"
+names(harvard_data)[11] <- "duration_care_days"
+names(harvard_data)[12] <- "duration_care_years"
+names(harvard_data)[13] <- "trauma"
+names(harvard_data)[14] <- "risk"
+names(harvard_data)[15] <- "MRI_brain"
+names(harvard_data)[16] <- "CT_head"
+names(harvard_data)[17] <- "CT_chest"
+names(harvard_data)[18] <- "EMG"
+names(harvard_data)[19] <- "vertigo"
+names(harvard_data)[20] <- "tinnitus"
+names(harvard_data)[21] <- "ear_fullness"
+names(harvard_data)[22] <- "visual_loss"
+names(harvard_data)[23] <- "syncope"
+names(harvard_data)[24] <- "eye_pain"
+names(harvard_data)[25] <- "facial_spasm_pain"
+names(harvard_data)[26] <- "skull_base"
+names(harvard_data)[27] <- "skull_base_side"
+names(harvard_data)[28] <- "chest_pain"
+names(harvard_data)[29] <- "chest_pain_side"
+names(harvard_data)[30] <- "shoulder_blades"
+names(harvard_data)[31] <- "shoulder_blade_side"
+names(harvard_data)[32] <- "neck_Pain"
+names(harvard_data)[33] <- "neck_pain_side"
+names(harvard_data)[34] <- "shoulder_pain"
+names(harvard_data)[35] <- "arm_hand_pain"
+names(harvard_data)[36] <- "limb_swelling"
+names(harvard_data)[37] <- "effect_recline"
+names(harvard_data)[38] <- "night_time_awake"
+names(harvard_data)[39] <- "present_awakening"
+names(harvard_data)[40] <- "pulses"
+names(harvard_data)[41] <- "side"
+names(harvard_data)[42] <- "percent_time"
+names(harvard_data)[43] <- "sidelocked"
+names(harvard_data)[44] <- "prevention"
+names(harvard_data)[45] <- "abortive"
+names(harvard_data)[46] <- "NULL DROP ME"
+names(harvard_data)[47] <-"surgery"
+names(harvard_data)[48] <- "follow_up_since_surgery"
+names(harvard_data)[49] <- "number_months_post_surgery"
+names(harvard_data)[50] <- "percent_improvement"
+
+harvard_data
+```
+
+```{r}
+write.csv(df, "\\cleaned_harvard.csv", row.names=TRUE)
+```
+
+```{r}
+bmi_stats <- harvard_data |> summarize(mean_bmi = mean(BMI), max_bmi= max(BMI), min_bmi=min(BMI))
+bmi_stats
+ggplot(data=harvard_data, aes(x=BMI, y=after_stat(density))) + geom_histogram(fill="pink", bins=15) +geom_density(color="red", linewidth = 1) + geom_vline(aes(xintercept=mean_bmi), bmi_stats, color="black") + labs(x="BMI", y="Frequency", title="Figure 6: Distribution of BMI") + theme_bw()
+```
+
+```{r}
+ggplot(harvard_data, aes(x=duration_care_days, y=duration_care_years)) + 
+    geom_point(
+        color="gray",
+        fill="pink",
+        shape=22,
+        alpha=0.5,
+        size=6,
+        stroke = 2
+        ) + labs(title="Figure 7: Duration of Care in Days", x="Days", y="Years") + theme_bw()
+```
+
+```{r}
+df_words <- data.frame(table(unlist(strsplit(tolower(harvard_data$prevention), ","))))
+
+names(df_words)[1] <- "medication"
+names(df_words)[2] <- "times_used"
+
+df_words <- df_words[order(-df_words$times_used),]
+df_words
+ggplot(data=head(df_words), aes(x=medication, y=times_used))+ geom_col(fill="pink") + labs(x="Medication Name", y="Times prescribed", title="Figure 8: Medications prescribed") + theme_bw() + theme(axis.text.x = element_text(angle=45, hjust=1)) 
+```
+
+```{r}
+ggplot(data=harvard_data, aes(x=pulses)) + geom_dotplot(binwidth = .1, stackdir = "centerwhole", fill="pink")  +
+  scale_y_continuous(NULL, breaks = NULL) + theme_bw() + labs(x="Pulse Status", y="", title="Figure 9: Pulse Variations") 
+```
+
+```{r}
+pie_chart <- harvard_data %>% group_by(vertigo, visual_loss) %>% summarise(n = n(), .groups = "keep")
+PieDonut(pie_chart, aes(pies=vertigo, donuts=visual_loss, count=n), start=pi/2, addPieLabel = FALSE, pieLabelSize = 3, donutLabelSize = 2, showPieName = FALSE, title="Figure 10: Vertigo with visual loss", ratioByGroup = TRUE, use.labels = TRUE, theme_minimal())
+
+
+```
