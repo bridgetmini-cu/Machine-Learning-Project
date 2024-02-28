@@ -1,0 +1,111 @@
+---
+title: "PCA Migraine"
+author: "Bridget Litostansky"
+date: "2024-02-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## PCA Migraine Work
+
+## Simple Linear Regression
+
+```{r}
+rm(list = ls())
+#install.packages('Metrics')
+library(Metrics)
+set.seed(21)
+```
+
+```{r}
+data <- read.csv('migraine_kaggle.csv')
+str(data)
+```
+
+```{r}
+data <- na.omit(data)
+summary(data)
+```
+
+```{r}
+drop_columns = c("Type", 'Ataxia', 'Hypoacusis', 'Diplopia', 'Defect', 'Conscience', 'Paresthesia', 'Dysphasia', 'Dysarthria')
+data <- data[, !(names(data)%in% drop_columns)]
+  str(data)
+```
+
+```{r}
+index <- floor(.70 * nrow(data))
+train_index <- sample(seq_len(nrow(data)), size=index)
+train <- data[train_index, ] # 70% training 280 observations
+test <- data[-train_index, ] # 30% testing from 120 observations
+```
+
+```{r}
+# simple linear regression model to see how well we do
+
+simple_lm <- lm(Duration ~ . , data = train)
+
+simple_lm
+```
+
+```{r}
+lm_pred <- predict(simple_lm, test)
+```
+
+```{r}
+rmse(actual = test$Duration, predicted = as.numeric((lm_pred)))
+```
+
+## PCA 
+
+```{r}
+#install.packages("corrr")
+#install.packages("ggcorrplot")
+#install.packages("FactoMineR")
+library("FactoMineR")
+library('corrr')
+library(ggcorrplot)
+```
+
+```{r}
+migraine_data <- read.csv('migraine_kaggle.csv')
+str(migraine_data)
+
+sum(is.na(migraine_data)) #No NA values, NICE :D
+```
+
+```{r}
+drop_columns = c("Type", 'Ataxia', 'Hypoacusis', 'Diplopia', 'Defect', 'Conscience', 'Paresthesia', 'Dysphasia', 'Dysarthria')
+migraine_data <- migraine_data[, !(names(migraine_data)%in% drop_columns)]
+  str(migraine_data)
+```
+
+```{r}
+#Making the data normalized
+migraine_normalized <- scale(migraine_data)
+head(migraine_normalized)
+data.pca$loadings[, 1:10]
+```
+
+```{r}
+correlation_matrix <- cor(migraine_normalized)
+ggcorrplot(correlation_matrix) + theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + labs(title="Correlation Matrix of Migraine Data") + xlab("") + ylab("")
+```
+
+```{r}
+migraine.pca <- princomp(correlation_matrix)
+summary(migraine.pca)
+
+fviz_eig(migraine.pca, addlabels = TRUE) + theme_bw() + labs(title="Importance of each component")
+```
+
+```{r}
+library("factoextra")
+fviz_pca_var(migraine.pca, col.var = "cos2",
+            gradient.cols = c("pink", "orange", "red"),
+            repel = TRUE) + theme_bw() + labs(title="Contribution of each component") + xlab("Component 1 - 43.6%") + ylab("Component 2 - 19.7%")
+
+```
