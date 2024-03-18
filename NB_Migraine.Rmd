@@ -1,0 +1,163 @@
+---
+title: "NB_Migraine"
+author: "Bridget Litostansky"
+date: "2024-03-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Naive Bayes - Migraine Data
+
+```{r}
+# install.packages('tidymodels')
+# install.packages('naivebayes')
+library(tidymodels)
+library(tidyr)
+library(naivebayes)
+library(dplyr)
+library(ggplot2)
+library(psych)
+```
+
+```{r}
+harvard_data <- read.csv('harvard_migraines.csv')
+
+names(harvard_data)[1] <- "code"
+names(harvard_data)[2] <- "ichd_diagnosis"
+names(harvard_data)[3] <- "questionnaire"
+names(harvard_data)[4] <- "age_at_presentation"
+names(harvard_data)[5] <- "any_headache"
+names(harvard_data)[6] <- "age_at_chronic"
+names(harvard_data)[7] <- "duration_chronic"
+names(harvard_data)[8] <- "chronic_onset"
+names(harvard_data)[9] <- "BMI"
+names(harvard_data)[10] <- "LP_OP_cmH20"
+names(harvard_data)[11] <- "duration_care_days"
+names(harvard_data)[12] <- "duration_care_years"
+names(harvard_data)[13] <- "trauma"
+names(harvard_data)[14] <- "risk"
+names(harvard_data)[15] <- "MRI_brain"
+names(harvard_data)[16] <- "CT_head"
+names(harvard_data)[17] <- "CT_chest"
+names(harvard_data)[18] <- "EMG"
+names(harvard_data)[19] <- "vertigo"
+names(harvard_data)[20] <- "tinnitus"
+names(harvard_data)[21] <- "ear_fullness"
+names(harvard_data)[22] <- "visual_loss"
+names(harvard_data)[23] <- "syncope"
+names(harvard_data)[24] <- "eye_pain"
+names(harvard_data)[25] <- "facial_spasm_pain"
+names(harvard_data)[26] <- "skull_base"
+names(harvard_data)[27] <- "skull_base_side"
+names(harvard_data)[28] <- "chest_pain"
+names(harvard_data)[29] <- "chest_pain_side"
+names(harvard_data)[30] <- "shoulder_blades"
+names(harvard_data)[31] <- "shoulder_blade_side"
+names(harvard_data)[32] <- "neck_Pain"
+names(harvard_data)[33] <- "neck_pain_side"
+names(harvard_data)[34] <- "shoulder_pain"
+names(harvard_data)[35] <- "arm_hand_pain"
+names(harvard_data)[36] <- "limb_swelling"
+names(harvard_data)[37] <- "effect_recline"
+names(harvard_data)[38] <- "night_time_awake"
+names(harvard_data)[39] <- "present_awakening"
+names(harvard_data)[40] <- "pulses"
+names(harvard_data)[41] <- "side"
+names(harvard_data)[42] <- "percent_time"
+names(harvard_data)[43] <- "sidelocked"
+names(harvard_data)[44] <- "prevention"
+names(harvard_data)[45] <- "abortive"
+names(harvard_data)[46] <- "NULL DROP ME"
+names(harvard_data)[47] <-"surgery"
+names(harvard_data)[48] <- "follow_up_since_surgery"
+names(harvard_data)[49] <- "number_months_post_surgery"
+names(harvard_data)[50] <- "percent_improvement"
+
+harvard_data$pulses[which(harvard_data$pulses == "Weak bilat")] <- "Weak Bilat"
+harvard_data$pulses[which(harvard_data$pulses == "Weak left")] <- "Weak Left"
+harvard_data$visual_loss[which(harvard_data$visual_loss == "Ipsi ")] <- "Ipsi"
+harvard_data
+```
+
+```{r}
+set.seed(27)
+split_data <- initial_split(harvard_data, prop = 0.70)
+training_migraine <- training(split_data)
+test_migraine <- testing(split_data)
+
+training_migraine
+test_migraine
+```
+
+```{r}
+xtabs(~pulses+ichd_diagnosis, data = harvard_data)
+
+model <- naive_bayes(pulses ~ visual_loss, data = training_migraine, usekernel = T, laplace = 1) 
+model 
+plot(model) 
+```
+
+```{r}
+prediction1 <- predict(model, training_migraine)
+confusionMatrix(prediction1, as.factor(training_migraine$pulses))
+```
+
+```{r}
+prediction2 <- predict(model, test_migraine)
+confusionMatrix(prediction2, as.factor(test_migraine$pulses))
+```
+
+```{r}
+set.seed(28)
+
+index_sample <- sample(1:nrow(harvard_data), 50000, replace=TRUE)
+sampled_migraine <- harvard_data[index_sample, ]
+
+sampled_migraine
+
+split_data <- initial_split(sampled_migraine, prop = 0.70)
+sampled_training_migraine <- training(split_data)
+sampled_test_migraine <- testing(split_data)
+
+sampled_training_migraine
+sampled_test_migraine
+```
+
+```{r}
+xtabs(~pulses+visual_loss, data = sampled_training_migraine)
+
+model <- naive_bayes(pulses ~ visual_loss, data = sampled_training_migraine, usekernel = T, laplace=1) 
+model 
+plot(model)
+```
+
+```{r}
+library(caret)
+prediction1 <- predict(model, sampled_training_migraine)
+confusionMatrix(prediction1, as.factor(sampled_training_migraine$pulses))
+```
+
+```{r}
+prediction2 <- predict(model, sampled_test_migraine)
+confusionMatrix(prediction2, as.factor(sampled_test_migraine$pulses))
+```
+
+```{r}
+
+sampled_migraine
+xtabs(~pulses+ side, data = sampled_training_migraine)
+
+model <- naive_bayes(pulses ~ side, data = sampled_training_migraine, usekernel = T, laplace=1) 
+model 
+plot(model)
+```
+
+```{r}
+prediction1 <- predict(model, sampled_training_migraine)
+(confusion_matrix <- table(prediction1, sampled_training_migraine$side))
+
+cat("Misclassification: ", 1 - sum(diag(confusion_matrix)) / sum(confusion_matrix))
+```
