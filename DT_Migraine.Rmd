@@ -1,0 +1,91 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Decision Trees - Migraine Data
+
+```{r}
+# Loading in necessary packages
+# install.packages('tidymodels')
+library(tidymodels)
+library(tidyr)
+```
+
+```{r}
+
+migraine_data <- read.csv("migraine_kaggle.csv")
+migraine_data
+```
+
+```{r}
+split_data <- initial_split(migraine_data, prop = 0.70)
+training_migraine <- training(split_data)
+test_migraine <- testing(split_data)
+
+training_migraine
+test_migraine
+```
+
+```{r}
+library(rpart)
+library(rpart.plot)
+
+
+migraine_tree <- rpart(Type ~ ., data = training_migraine, method = "class")
+
+rpart.plot(migraine_tree, main = "Decision Tree for Migraine Dataset")
+```
+
+```{r}
+predictions <- predict(migraine_tree, test_migraine, type = "class")
+predictions
+
+library(caret)
+cm <- confusionMatrix(predictions, as.factor(test_migraine$Type))
+cm
+```
+
+```{r}
+
+library(data.table)
+
+df <- data.frame(training_migraine)
+cat("Gini Impurity (Age): ", gini_impurity(df$Age))
+```
+
+```{r}
+migraine_tree2 <- rpart(Type ~ Age, data = training_migraine, method = "class")
+
+rpart.plot(migraine_tree2, main = "Decision Tree for Migraine Dataset", box.palette = "green")
+```
+
+```{r}
+predictions <- predict(migraine_tree2, test_migraine, type = "class")
+predictions
+
+cm <- confusionMatrix(predictions, as.factor(test_migraine$Type))
+cm
+```
+
+```{r}
+migraine_tree3 <- rpart(Type ~ Frequency + Duration, data = training_migraine, method = "class")
+
+rpart.plot(migraine_tree3, main = "Decision Tree for Migraine Dataset Duration & Frequency Only", box.palette = "pink")
+```
+
+```{r}
+predictions <- predict(migraine_tree3, test_migraine, type = "class")
+predictions
+
+cm <- confusionMatrix(predictions, as.factor(test_migraine$Type))
+cm
+```
+
+```{r}
+cat("Gini Impurity (Duration): ", gini_impurity(df$Duration))
+```
+
+```{r}
+cat("Gini Impurity (Frequency): ", gini_impurity(df$Frequency))
+```
