@@ -1,0 +1,48 @@
+---
+title: "Linear Regression"
+author: "Bridget Litostansky"
+date: "2024-05-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Linear Regression
+
+```{r}
+migraine_data <- read.csv('linear_regression.csv')
+
+
+names(migraine_data)[1] <- "any_headache"
+names(migraine_data)[2] <- "age_at_chronic"
+names(migraine_data)[3] <- "duration_years"
+names(migraine_data)[4] <- "bmi"
+
+migraine_data
+```
+
+```{r}
+regression_model <- lm(age_at_chronic ~ bmi, data=migraine_data)
+summary(regression_model)
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(migraine_data, aes(x = bmi, y = age_at_chronic)) + 
+  geom_point() +
+  stat_smooth(method = "lm", col = "pink") + labs(title="BMI vs Age at chronic headache diagnosis", x ="BMI", y = "Age at chronic diagnosis")
+```
+
+```{r}
+regression_model <- lm(duration_years ~ any_headache, data=migraine_data)
+summary(regression_model)
+```
+
+```{r}
+ggplot(migraine_data, aes(x = any_headache, y = duration_years)) + 
+  geom_point() +
+  stat_smooth(method = "lm", col = "pink") + labs(title="Age of first headache vs Duration of care", x ="Age of first headache", y = "Duration (years)")
+```
